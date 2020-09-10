@@ -6,6 +6,8 @@
 import tensorflow as tf
 import gym
 
+print(tf.__version__)
+
 import numpy as np
 import random as ran
 import datetime
