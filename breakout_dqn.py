@@ -96,18 +96,18 @@ def get_copy_var_ops(*, dest_scope_name="target", src_scope_name="main"):
     return op_holder
 
 
-def get_init_state(history, s):
+def get_init_state(history, state):
     '''에피소드 시작 State를 초기화.
 
     Args:
         history(np.array): 5개의 프레임이 저장될 array
-        s(list): 초기화된 이미지
+        state(list): 초기화된 이미지
 
     Note:
-        history[:,:,:3]에 모두 초기화된 이미지(s)를 넣어줌
+        history[:,:,:4]에 모두 초기화된 이미지(state)를 넣어줌
     '''
     for i in range(HISTORY_SIZE):
-        history[:, :, i] = pre_proc(s)
+        history[:, :, i] = pre_proc(state)
 
 
 def get_game_type(count, l, no_life_game, start_live):
@@ -310,11 +310,10 @@ def main():
             history = np.zeros([84, 84, 5], dtype=np.uint8)
             rall, count = 0, 0
             d = False
-            ter = False
             start_lives = 0
-            s = env.reset()
+            state = env.reset()
 
-            get_init_state(history, s)
+            get_init_state(history, state)
 
             while not d:
                 # env.render()
