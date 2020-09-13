@@ -3,6 +3,8 @@
 # 김태훈님 ( https://github.com/devsisters/DQN-tensorflow )
 # 코드를 참조했습니다. 감사합니다!
 #
+import time
+
 import tensorflow as tf
 import gym
 
@@ -314,6 +316,9 @@ def main():
 
             get_init_state(history, s)
 
+            ts = time.time()
+            ts_step = frame
+            
             while not d:
                 # env.render()
 
@@ -381,10 +386,14 @@ def main():
 
             average_reward.append(rall)
 
+            current_ts = time.time()
+            ts_diff = current_ts - ts
+            speed = (frame - ts_step) / ts_diff
+
             print("Episode:{0:6d} | Frames:{1:9d} | Steps:{2:5d} | Reward:{3:3.0f} | e-greedy:{4:.5f} | "
-                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f}  ".format(episode, frame, count, rall, e,
-                                                                        np.mean(average_Q),
-                                                                        np.mean(recent_rlist)))
+                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f} | Speed: {7:7.2f} steps/sec.".format(
+                episode, frame, count, rall, e, np.mean(average_Q), np.mean(recent_rlist), speed
+            ))
 
             if epoch_on:
                 epoch += 1
