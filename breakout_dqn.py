@@ -3,6 +3,8 @@
 # 김태훈님 ( https://github.com/devsisters/DQN-tensorflow )
 # 코드를 참조했습니다. 감사합니다!
 #
+import time
+
 import tensorflow as tf
 import gym
 
@@ -27,6 +29,7 @@ env = gym.make('BreakoutDeterministic-v4')
 MINIBATCH_SIZE = 32
 HISTORY_SIZE = 4
 TRAIN_START = 50000
+#TRAIN_START = 1000
 FINAL_EXPLORATION = 0.1
 TARGET_UPDATE = 10000
 MEMORY_SIZE = 400000
@@ -44,7 +47,7 @@ MOMENTUM = 0.95
 model_path = "save/Breakout.ckpt"
 
 
-def cliped_error(error):
+def clipped_error(error):
     '''후버로스를 사용하여 error 클립.
 
     Args:
@@ -96,18 +99,22 @@ def get_copy_var_ops(*, dest_scope_name="target", src_scope_name="main"):
     return op_holder
 
 
-def get_init_state(history, s):
+def get_init_state(history, state):
     '''에피소드 시작 State를 초기화.
 
     Args:
         history(np.array): 5개의 프레임이 저장될 array
-        s(list): 초기화된 이미지
+        state(list): 초기화된 이미지
 
     Note:
+<<<<<<< HEAD
         history[:,:, i]에 초기화된 이미지(s)를 넣어줌
+=======
+        history[:,:,:4]에 모두 초기화된 이미지(state)를 넣어줌
+>>>>>>> 5321cee158e6ac4bf5a0829ff053a823f4b15993
     '''
     for i in range(HISTORY_SIZE):
-        history[:, :, i] = pre_proc(s)
+        history[:, :, i] = pre_proc(state)
 
 
 def get_game_type(count, info, no_life_game, start_live):
@@ -259,7 +266,7 @@ class DQNAgent:
         q_val = tf.reduce_sum(tf.multiply(self.Q_pre, a_one_hot), reduction_indices=1)
 
         # error를 -1~1 사이로 클립
-        error = cliped_error(self.Y - q_val)
+        error = clipped_error(self.Y - q_val)
 
         self.loss = tf.reduce_mean(error)
 
@@ -269,8 +276,10 @@ class DQNAgent:
         self.saver = tf.train.Saver(max_to_keep=None)
 
     def get_q(self, history):
-        return self.sess.run(self.Q_pre, feed_dict={self.X: np.reshape(np.float32(history / 255.),
-                                                                       [-1, 84, 84, 4])})
+        return self.sess.run(self.Q_pre, feed_dict={
+            self.X: np.reshape(np.float32(history / 255.),
+            [-1, 84, 84, 4])
+        })
 
     def get_action(self, q, e):
         if e > np.random.rand(1):
@@ -311,9 +320,12 @@ def main():
             episode_reward, count = 0, 0
             done = False
             start_lives = 0
-            s = env.reset()
+            state = env.reset()
 
-            get_init_state(history, s)
+            get_init_state(history, state)
+
+            ts = time.time()
+            ts_step = frame
 
             while not done:
                 # env.render()
@@ -341,28 +353,27 @@ def main():
                 else:
                     real_a = 5
                 '''
-
                 # next_state : next frame
                 # reward : reward
                 # done : done(terminal)
                 # info : info(lives)
                 next_state, reward, done, info = env.step(action)
-                ter = done
-                reward = np.clip(reward, -1, 1)
+                clipped_reward = np.clip(reward, -1, 1)
 
                 # 라이프가 있는 게임인지 아닌지 판별
                 no_life_game, start_lives = get_game_type(count, info, no_life_game, start_lives)
 
                 # 라이프가 줄어들거나 negative 리워드를 받았을 때 terminal 처리를 해줌
-                ter, start_lives = get_terminal(start_lives, info, reward, no_life_game, ter)
+                done, start_lives = get_terminal(start_lives, info, clipped_reward, no_life_game, done)
 
                 # 새로운 프레임을 히스토리 마지막에 넣어줌
                 history[:, :, 4] = pre_proc(next_state)
 
                 # 메모리 저장 효율을 높이기 위해 5개의 프레임을 가진 히스토리를 저장
+                replay_memory.append((np.copy(history[:, :, :]), action, clipped_reward, done))
+
                 # state와 next_state는 3개의 데이터가 겹침을 이용.
-                replay_memory.append((np.copy(history[:, :, :]), action, reward, ter))
-                history[:, :, :4] = history[:, :, 1:]
+                history[:, :, :4] = history[:, :, 1:] # 마지막 즉 history[:, :, 4] 값은 쓰레기로 지정
 
                 episode_reward += reward
 
@@ -382,14 +393,15 @@ def main():
                     epoch_on = True
 
             recent_rlist.append(episode_reward)
-
             average_reward.append(episode_reward)
 
+            current_ts = time.time()
+            ts_diff = current_ts - ts
+            speed = (frame - ts_step) / ts_diff
+
             print("Episode:{0:6d} | Frames:{1:9d} | Steps:{2:5d} | Reward:{3:3.0f} | e-greedy:{4:.5f} | "
-                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f}  ".format(
-                episode, frame, count, episode_reward, e,
-                np.mean(average_Q),
-                np.mean(recent_rlist)
+                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f} | Speed: {7:7.2f} steps/sec. ".format(
+                episode, frame, count, episode_reward, e, np.mean(average_Q), np.mean(recent_rlist), speed
             ))
 
             if epoch_on:
