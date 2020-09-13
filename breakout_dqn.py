@@ -3,6 +3,7 @@
 # 김태훈님 ( https://github.com/devsisters/DQN-tensorflow )
 # 코드를 참조했습니다. 감사합니다!
 #
+import os
 import time
 
 import tensorflow as tf
@@ -28,7 +29,7 @@ env = gym.make('BreakoutDeterministic-v4')
 # 하이퍼 파라미터
 MINIBATCH_SIZE = 32
 HISTORY_SIZE = 4
-TRAIN_START = 50000
+TRAIN_START = 5000
 #TRAIN_START = 1000
 FINAL_EXPLORATION = 0.1
 TARGET_UPDATE = 10000
@@ -107,11 +108,7 @@ def get_init_state(history, state):
         state(list): 초기화된 이미지
 
     Note:
-<<<<<<< HEAD
-        history[:,:, i]에 초기화된 이미지(s)를 넣어줌
-=======
-        history[:,:,:4]에 모두 초기화된 이미지(state)를 넣어줌
->>>>>>> 5321cee158e6ac4bf5a0829ff053a823f4b15993
+        history[:,:, i]에 초기화된 이미지(state)를 넣어줌
     '''
     for i in range(HISTORY_SIZE):
         history[:, :, i] = pre_proc(state)
@@ -220,10 +217,10 @@ def plot_data(epoch, epoch_score, average_reward, epoch_Q, average_Q, mainDQN):
     plt.axis([0, epoch, 0, np.max(epoch_score) * 6 / 5])
     plt.xlabel('Training Epochs')
     plt.ylabel('Average Reward per Episode')
-    plt.plot(epoch_score, "reward")
+    plt.plot(epoch_score)
 
     plt.pause(0.05)
-    plt.savefig("graph/{} epoch".format(epoch - 1))
+    plt.savefig("graph/{}_epoch".format(epoch - 1))
 
     save_path = mainDQN.saver.save(mainDQN.sess, model_path, global_step=(epoch - 1))
     print("Model(epoch :", epoch, ") saved in file: ", save_path, " Now time : ", datetime.datetime.now())
@@ -413,6 +410,8 @@ def main():
 
 
 if __name__ == "__main__":
+    if not os.path.exists('graph/'):
+        os.makedirs('graph/')
     main()
 
 
