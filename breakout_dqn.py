@@ -104,18 +104,18 @@ def get_init_state(history, s):
         s(list): 초기화된 이미지
 
     Note:
-        history[:,:,:3]에 모두 초기화된 이미지(s)를 넣어줌
+        history[:,:, i]에 초기화된 이미지(s)를 넣어줌
     '''
     for i in range(HISTORY_SIZE):
         history[:, :, i] = pre_proc(s)
 
 
-def get_game_type(count, l, no_life_game, start_live):
+def get_game_type(count, info, no_life_game, start_live):
     '''라이프가 있는 게임인지 판별
 
     Args:
         count(int): 에피소드 시작 후 첫 프레임인지 확인하기 위한 arg
-        l(dict): 라이프 값들이 저장되어있는 dict ex) l['ale.lives']
+        info(dict): 라이프 값들이 저장되어있는 dict ex) info['ale.lives']
         no_life_game(bool): 라이프가 있는 게임일 경우, bool 값을 반환해주기 위한 arg
         start_live(int): 라이프가 있는 경우 라이프값을 초기화 하기 위한 arg
 
@@ -125,7 +125,7 @@ def get_game_type(count, l, no_life_game, start_live):
             start_live(int): 라이프가 있는 게임이면 초기화된 라이프
     '''
     if count == 1:
-        start_live = l['ale.lives']
+        start_live = info['ale.lives']
         # 시작 라이프가 0일 경우, 라이프 없는 게임
         if start_live == 0:
             no_life_game = True
@@ -134,12 +134,12 @@ def get_game_type(count, l, no_life_game, start_live):
     return [no_life_game, start_live]
 
 
-def get_terminal(start_live, l, reward, no_life_game, ter):
+def get_terminal(start_live, info, reward, no_life_game, ter):
     '''목숨이 줄어들거나, negative reward를 받았을 때, terminal 처리
 
     Args:
         start_live(int): 라이프가 있는 게임일 경우, 현재 라이프 수
-        l(dict): 다음 상태에서 라이프가 줄었는지 확인하기 위한 다음 frame의 라이프 info
+        info(dict): 다음 상태에서 라이프가 줄었는지 확인하기 위한 다음 frame의 라이프 info
         no_life_game(bool): 라이프가 없는 게임일 경우, negative reward를 받으면 terminal 처리를 해주기 위한 게임 타입
         ter(bool): terminal 처리를 저장할 arg
 
@@ -154,9 +154,9 @@ def get_terminal(start_live, l, reward, no_life_game, ter):
             ter = True
     else:
         # 목숨 있는 게임일 경우 Terminal 처리
-        if start_live > l['ale.lives']:
+        if start_live > info['ale.lives']:
             ter = True
-            start_live = l['ale.lives']
+            start_live = info['ale.lives']
 
     return [ter, start_live]
 
@@ -213,7 +213,7 @@ def plot_data(epoch, epoch_score, average_reward, epoch_Q, average_Q, mainDQN):
     plt.axis([0, epoch, 0, np.max(epoch_score) * 6 / 5])
     plt.xlabel('Training Epochs')
     plt.ylabel('Average Reward per Episode')
-    plt.plot(epoch_score, "r")
+    plt.plot(epoch_score, "reward")
 
     plt.pause(0.05)
     plt.savefig("graph/{} epoch".format(epoch - 1))
@@ -308,15 +308,14 @@ def main():
             episode += 1
 
             history = np.zeros([84, 84, 5], dtype=np.uint8)
-            rall, count = 0, 0
-            d = False
-            ter = False
+            episode_reward, count = 0, 0
+            done = False
             start_lives = 0
             s = env.reset()
 
             get_init_state(history, s)
 
-            while not d:
+            while not done:
                 # env.render()
 
                 frame += 1
@@ -343,26 +342,29 @@ def main():
                     real_a = 5
                 '''
 
-                # s1 : next frame / r : reward / d : done(terminal) / l : info(lives)
-                s1, r, d, l = env.step(action)
-                ter = d
-                reward = np.clip(r, -1, 1)
+                # next_state : next frame
+                # reward : reward
+                # done : done(terminal)
+                # info : info(lives)
+                next_state, reward, done, info = env.step(action)
+                ter = done
+                reward = np.clip(reward, -1, 1)
 
                 # 라이프가 있는 게임인지 아닌지 판별
-                no_life_game, start_lives = get_game_type(count, l, no_life_game, start_lives)
+                no_life_game, start_lives = get_game_type(count, info, no_life_game, start_lives)
 
                 # 라이프가 줄어들거나 negative 리워드를 받았을 때 terminal 처리를 해줌
-                ter, start_lives = get_terminal(start_lives, l, reward, no_life_game, ter)
+                ter, start_lives = get_terminal(start_lives, info, reward, no_life_game, ter)
 
                 # 새로운 프레임을 히스토리 마지막에 넣어줌
-                history[:, :, 4] = pre_proc(s1)
+                history[:, :, 4] = pre_proc(next_state)
 
                 # 메모리 저장 효율을 높이기 위해 5개의 프레임을 가진 히스토리를 저장
                 # state와 next_state는 3개의 데이터가 겹침을 이용.
                 replay_memory.append((np.copy(history[:, :, :]), action, reward, ter))
                 history[:, :, :4] = history[:, :, 1:]
 
-                rall += r
+                episode_reward += reward
 
                 if frame > TRAIN_START:
                     # 프레임 스킵때마다 학습
@@ -379,14 +381,16 @@ def main():
                 if (frame - TRAIN_START) % 50000 == 0:
                     epoch_on = True
 
-            recent_rlist.append(rall)
+            recent_rlist.append(episode_reward)
 
-            average_reward.append(rall)
+            average_reward.append(episode_reward)
 
             print("Episode:{0:6d} | Frames:{1:9d} | Steps:{2:5d} | Reward:{3:3.0f} | e-greedy:{4:.5f} | "
-                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f}  ".format(episode, frame, count, rall, e,
-                                                                        np.mean(average_Q),
-                                                                        np.mean(recent_rlist)))
+                  "Avg_Max_Q:{5:2.5f} | Recent reward:{6:.5f}  ".format(
+                episode, frame, count, episode_reward, e,
+                np.mean(average_Q),
+                np.mean(recent_rlist)
+            ))
 
             if epoch_on:
                 epoch += 1
