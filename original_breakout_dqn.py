@@ -3,10 +3,13 @@
 # 김태훈님 ( https://github.com/devsisters/DQN-tensorflow )
 # 코드를 참조했습니다. 감사합니다!
 #
+
 import time
 
 import tensorflow as tf
 import gym
+
+print(tf.__version__)
 
 import numpy as np
 import random as ran
@@ -27,6 +30,7 @@ env = gym.make('BreakoutDeterministic-v4')
 MINIBATCH_SIZE = 32
 HISTORY_SIZE = 4
 TRAIN_START = 50000
+#TRAIN_START = 1000
 FINAL_EXPLORATION = 0.1
 TARGET_UPDATE = 10000
 MEMORY_SIZE = 400000

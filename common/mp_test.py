@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 import time
-
 import torch.multiprocessing as mp
-
-from common import experience
+from collections import deque
 
 
 def play_func(exp_queue):
@@ -25,7 +23,7 @@ def play_func(exp_queue):
 def main():
     mp.set_start_method('spawn')
 
-    buffer = experience.ExperienceReplayBuffer(experience_source=None, buffer_size=100000)
+    buffer = deque(maxlen=1000)
 
     train_freq = 4
     batch_size = 32
