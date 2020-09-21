@@ -26,7 +26,6 @@ def main():
     buffer = deque(maxlen=1000)
 
     train_freq = 4
-    batch_size = 32
     replay_initial = 100
 
     exp_queue = mp.Queue(maxsize=train_freq * 2)
