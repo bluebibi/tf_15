@@ -45,7 +45,7 @@ def main():
             continue
 
         batch = buffer.pop()
-        print(batch, " - ", len(batch))
+        print(batch, " - ")
         time.sleep(1)
 
 
