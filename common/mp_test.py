@@ -39,12 +39,12 @@ def main():
             if exp is None:
                 play_proc.join()
                 break
-            buffer._add(exp)
+            buffer.append(exp)
 
         if len(buffer) < replay_initial:
             continue
 
-        batch = buffer.sample(batch_size)
+        batch = buffer.pop()
         print(batch, " - ", len(batch))
         time.sleep(1)
 
